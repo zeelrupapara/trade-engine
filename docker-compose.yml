@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  postgresdb:
+    image: postgres:15.2-alpine
+    container_name: postgresdb
+    environment:
+      POSTGRES_USER: news
+      POSTGRES_PASSWORD: news
+      POSTGRES_DB: news
+    ports:
+    - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+  

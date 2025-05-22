@@ -1,0 +1,9 @@
+.editorconfig
+.git
+AUTHORS.md
+CONTRIBUTING.md
+LICENSE
+Makefile
+README.md
+vendor/
+.env
