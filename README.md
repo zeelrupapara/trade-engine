@@ -1,6 +1,6 @@
-# News Service
+# Trade Engine Service
 
-## Local Setup of the gRPC News Service
+## Local Setup of the gRPC Trade Engine Service
 
 Follow these steps to set up the news service locally:
 
