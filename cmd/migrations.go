@@ -7,8 +7,8 @@ import (
 	_ "github.com/lib/pq" // for postgres dialect
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/spf13/cobra"
-	"gitlab.com/zeelrupapara/news-srv/config"
-	database "gitlab.com/zeelrupapara/news-srv/database/migrations"
+	"gitlab.com/zeelrupapara/trade-engine/config"
+	database "gitlab.com/zeelrupapara/trade-engine/database/migrations"
 )
 
 // GetMigrationCommandDef initialize migration command

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"gitlab.com/zeelrupapara/news-srv/cmd"
-	"gitlab.com/zeelrupapara/news-srv/config"
-	"gitlab.com/zeelrupapara/news-srv/logger"
+	"gitlab.com/zeelrupapara/trade-engine/cmd"
+	"gitlab.com/zeelrupapara/trade-engine/config"
+	"gitlab.com/zeelrupapara/trade-engine/pkg/logger"
 	"go.uber.org/zap"
 )
 

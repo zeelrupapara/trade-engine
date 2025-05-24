@@ -1,5 +1,5 @@
 package types
 
-type NewsService struct {
+type TradeEngineService struct {
 	// register services of handlers
 }

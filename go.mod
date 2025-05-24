@@ -1,4 +1,4 @@
-module gitlab.com/zeelrupapara/news-srv
+module gitlab.com/zeelrupapara/trade-engine
 
 go 1.23.4
 

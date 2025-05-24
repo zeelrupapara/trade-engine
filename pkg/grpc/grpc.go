@@ -4,7 +4,7 @@ import (
 	"net"
 
 	"github.com/doug-martin/goqu/v9"
-	"gitlab.com/zeelrupapara/news-srv/handlers"
+	"gitlab.com/zeelrupapara/trade-engine/handlers"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -31,7 +31,7 @@ func (s *gRPCServer) Run() error {
 	grpcServer := grpc.NewServer()
 
 	// register our grpc services
-	err = handlers.NewGrpcNewsService(grpcServer, s.db, s.logger)
+	err = handlers.NewGrpcTradeEngineService(grpcServer, s.db, s.logger)
 	if err != nil {
 		return err
 	}

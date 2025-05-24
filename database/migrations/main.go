@@ -7,7 +7,7 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	_ "github.com/mattn/go-sqlite3"
-	"gitlab.com/zeelrupapara/news-srv/config"
+	"gitlab.com/zeelrupapara/trade-engine/config"
 )
 
 var db *sql.DB
