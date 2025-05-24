@@ -17,6 +17,7 @@ type AppConfig struct {
 	Debug         bool   `envconfig:"DEBUG"`
 	Port          string `envconfig:"APP_PORT"`
 	DB            DBConfig
+	Nats          NatsConfig
 }
 
 // GetConfig Collects all configs
