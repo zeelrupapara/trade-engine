@@ -24,7 +24,7 @@ func GetAPICommandDef(cfg config.AppConfig, logger *zap.Logger) cobra.Command {
 			}
 
 			// Create Message Broker connection
-			nats, err := nats.NewMsgBrokerClient(cfg)
+			nats, err := nats.NewMsgBroker(cfg)
 			if err != nil {
 				logger.Error(err.Error(), zap.Any("Setup", "Init Nats Connection"))
 				return err

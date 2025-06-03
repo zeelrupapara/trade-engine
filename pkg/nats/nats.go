@@ -28,7 +28,7 @@ func natsErrHandler(nc *nats.Conn, sub *nats.Subscription, natsErr error) {
 }
 
 // Connecting with nats
-func NewMsgBrokerClient(cfg config.AppConfig) (*MsgBroker, error) {
+func NewMsgBroker(cfg config.AppConfig) (*MsgBroker, error) {
 	url := fmt.Sprint(cfg.Nats.Host, ":", cfg.Nats.Port)
 	fmt.Printf("Connecting to Nats  on %s \n", url)
 
