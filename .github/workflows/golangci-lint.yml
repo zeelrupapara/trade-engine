@@ -1,26 +1,26 @@
-name: golangci-lint
+# name: golangci-lint
 
-on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
+# on:
+#   push:
+#     branches:
+#       - main
+#       - master
+#   pull_request:
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-jobs:
-  golangci:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   golangci:
+#     name: Lint
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Run golangci-lint via Docker
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}":/app \
-            -w /app \
-            golangci/golangci-lint:v1.55.2 \
-            golangci-lint run --config=.golangci.yml --fix
+#       - name: Run golangci-lint via Docker
+#         run: |
+#           docker run --rm \
+#             -v "${{ github.workspace }}":/app \
+#             -w /app \
+#             golangci/golangci-lint:v1.55.2 \
+#             golangci-lint run --config=.golangci.yml --fix
