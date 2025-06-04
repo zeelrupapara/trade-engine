@@ -2,7 +2,6 @@ package exchange
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/adshao/go-binance/v2"
 	"gitlab.com/zeelrupapara/trade-engine/config"
@@ -26,10 +25,10 @@ func (b *Binance) GetSymbols() ([]string, error) {
 		return symbolMap, err
 	}
 
-	// Loop and print symbols (example: filter for USDT pairs)
-	fmt.Println("List of USDT trading pairs:")
 	for _, symbol := range exchangeInfo.Symbols {
-		symbolMap = append(symbolMap, symbol.Symbol)
+		if symbol.Status == "TRADING" && symbol.QuoteAsset == "USDT" {
+			symbolMap = append(symbolMap, symbol.Symbol)
+		}
 	}
 	return symbolMap, nil
 }

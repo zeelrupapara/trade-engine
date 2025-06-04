@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 
 	"gitlab.com/zeelrupapara/trade-engine/constants"
@@ -11,7 +10,7 @@ import (
 
 func (ec *EngineCore) LoadExSymbols(exchangeName string, active bool) error {
 	if !active {
-		return errors.New(fmt.Sprintf("Symbol Load Skipped: Exchange %s is not active", exchangeName))
+		return fmt.Errorf("Symbol Load Skipped: Exchange %s is not active", exchangeName)
 	}
 
 	switch exchangeName {
