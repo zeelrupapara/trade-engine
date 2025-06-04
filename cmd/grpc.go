@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"gitlab.com/zeelrupapara/trade-engine/config"
 	database "gitlab.com/zeelrupapara/trade-engine/database/migrations"
+	"gitlab.com/zeelrupapara/trade-engine/handlers"
 	grpc_server "gitlab.com/zeelrupapara/trade-engine/pkg/grpc"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/nats"
 	"go.uber.org/zap"
@@ -30,9 +31,17 @@ func GetAPICommandDef(cfg config.AppConfig, logger *zap.Logger) cobra.Command {
 				return err
 			}
 
+			// Init Engine Core
+			ec := handlers.NewEngineCore(cfg, logger, db)
+			err = ec.StartEngine()
+			if err != nil {
+				logger.Error(err.Error(), zap.Any("Setup", "Init Engine Core"))
+				return err
+			}
+
 			// Create grpc server
 			rpcServer := grpc_server.NewGRPCServer(cfg.Port, logger, db, nats.Nc)
-			if err := rpcServer.Run(); err != nil {
+			if err := rpcServer.StartRPC(); err != nil {
 				logger.Error(err.Error())
 				return err
 			}

@@ -49,6 +49,7 @@ func NewMsgBroker(cfg config.AppConfig) (*MsgBroker, error) {
 	}
 	nc.SetErrorHandler(natsErrHandler)
 
-	return &MsgBroker{Nc: nc}, nil
+	fmt.Println("Connected to Nats")
 
+	return &MsgBroker{Nc: nc}, nil
 }

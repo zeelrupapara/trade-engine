@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 
 	"github.com/doug-martin/goqu/v9"
@@ -28,6 +29,7 @@ func postgresDBConnection(cfg config.DBConfig) (*goqu.Database, error) {
 		if err != nil {
 			return nil, err
 		}
+		fmt.Printf("Connected to DB %s \n", dbURL)
 		return goqu.New(POSTGRES, db), err
 	}
 	return goqu.New(POSTGRES, db), err

@@ -5,7 +5,6 @@ import (
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/nats-io/nats.go"
-	"gitlab.com/zeelrupapara/trade-engine/handlers"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -23,7 +22,7 @@ func NewGRPCServer(addr string, logger *zap.Logger, db *goqu.Database, nats *nat
 }
 
 // Run starts grpc server
-func (s *GRPCServer) Run() error {
+func (s *GRPCServer) StartRPC() error {
 	// Start net server for grpc
 	lis, err := net.Listen("tcp", s.Addr)
 	if err != nil {
@@ -31,12 +30,6 @@ func (s *GRPCServer) Run() error {
 	}
 
 	grpcServer := grpc.NewServer()
-
-	// register our grpc services
-	err = handlers.NewGrpcTradeEngineService(grpcServer, s.DB, s.Logger)
-	if err != nil {
-		return err
-	}
 
 	s.Logger.Info("Starting gRPC server", zap.String("addr", s.Addr))
 	return grpcServer.Serve(lis)
