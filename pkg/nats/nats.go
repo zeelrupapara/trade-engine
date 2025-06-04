@@ -15,20 +15,31 @@ type MsgBroker struct {
 }
 
 func natsErrHandler(nc *nats.Conn, sub *nats.Subscription, natsErr error) {
-	// fmt.Printf("error: %v\n", natsErr)
-	if natsErr == nats.ErrSlowConsumer {
-		_, _, err := sub.Pending()
-		if err != nil {
+	const maxAttempts = 3
+	for attempts := 0; attempts < maxAttempts; attempts++ {
+		if natsErr == nats.ErrSlowConsumer {
+			_, _, err := sub.Pending()
+			if err != nil {
+				return
+			}
+			// Log error, notify operations...
 			return
 		}
-		return
-		// Log error, notify operations...
+
+		if natsErr == nil {
+			// reconnected, so return
+			return
+		}
+
+		// other errors, log them and wait a bit
+		fmt.Printf("NATS error: %v, attempt %d/%d\n", natsErr, attempts+1, maxAttempts)
+		time.Sleep(1 * time.Second)
 	}
-	// check for other errors
+	// Log error, notify operations...
 }
 
 // Connecting with nats
-func NewMsgBrokerClient(cfg config.AppConfig) (*MsgBroker, error) {
+func NewMsgBroker(cfg config.AppConfig) (*MsgBroker, error) {
 	url := fmt.Sprint(cfg.Nats.Host, ":", cfg.Nats.Port)
 	fmt.Printf("Connecting to Nats  on %s \n", url)
 
