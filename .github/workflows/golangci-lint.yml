@@ -1,4 +1,5 @@
 name: golangci-lint
+
 on:
   push:
     branches:
@@ -11,16 +12,15 @@ permissions:
 
 jobs:
   golangci:
-    name: lint
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.1
-          install-mode: binary
-          args: --config=.golangci.yml --fix
+
+      - name: Run golangci-lint via Docker
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/app \
+            -w /app \
+            golangci/golangci-lint:v1.55.2 \
+            golangci-lint run --config=.golangci.yml --fix
