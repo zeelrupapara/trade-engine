@@ -8,7 +8,7 @@ import (
 
 // Init app initialization
 func Init(cfg config.AppConfig, logger *zap.Logger) error {
-	grpcServerCmd := GetAPICommandDef(cfg, logger)
+	grpcServerCmd := GetEngineCommandDef(cfg, logger)
 	migrateCmd := GetMigrationCommandDef(cfg)
 
 	rootCmd := &cobra.Command{Use: "trade-engine"}

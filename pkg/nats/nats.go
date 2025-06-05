@@ -41,8 +41,6 @@ func natsErrHandler(nc *nats.Conn, sub *nats.Subscription, natsErr error) {
 // Connecting with nats
 func NewMsgBroker(cfg config.AppConfig) (*MsgBroker, error) {
 	url := fmt.Sprint(cfg.Nats.Host, ":", cfg.Nats.Port)
-	fmt.Printf("Connecting to Nats  on %s \n", url)
-
 	nc, err := nats.Connect(url, nats.Timeout(5*time.Second))
 	if err != nil {
 		return nil, err
@@ -50,5 +48,4 @@ func NewMsgBroker(cfg config.AppConfig) (*MsgBroker, error) {
 	nc.SetErrorHandler(natsErrHandler)
 
 	return &MsgBroker{Nc: nc}, nil
-
 }

@@ -5,7 +5,7 @@ te-gen:
   	--go-grpc_out=proto/genproto/engine --go-grpc_opt=paths=source_relative
 
 lint:
-	golangci-lint run --config lint.yaml
+	golangci-lint run --config .golangci.yml
 
 fix:
 	gofmt -s -w .

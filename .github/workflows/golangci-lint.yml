@@ -22,5 +22,5 @@
 #           docker run --rm \
 #             -v "${{ github.workspace }}":/app \
 #             -w /app \
-#             golangci/golangci-lint:v1.55.2 \
+#             golangci/golangci-lint \
 #             golangci-lint run --config=.golangci.yml --fix

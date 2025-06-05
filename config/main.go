@@ -6,6 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	cfg "gitlab.com/zeelrupapara/trade-engine/config/exchange"
 )
 
 // AllConfig variable of type AppConfig
@@ -18,6 +19,7 @@ type AppConfig struct {
 	Port          string `envconfig:"APP_PORT"`
 	DB            DBConfig
 	Nats          NatsConfig
+	Binance       cfg.BinanceCfg
 }
 
 // GetConfig Collects all configs
