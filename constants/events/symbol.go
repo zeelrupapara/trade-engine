@@ -6,7 +6,6 @@ const (
 )
 
 type SymbolEvent struct {
-	Symbol string `json:"symbol"`
+	Symbol   string `json:"symbol"`
 	Exchange string `json:"exchange"`
-	
 }

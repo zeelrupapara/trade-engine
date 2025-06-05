@@ -18,6 +18,7 @@ type Binance struct {
 	mu      sync.Mutex
 	Logger  *zap.Logger
 }
+
 func NewBinanceClient(cfg *config.AppConfig, logger *zap.Logger) *Binance {
 	client := binance.NewClient(cfg.Binance.APIKey, cfg.Binance.APISecret)
 	b := &Binance{
@@ -48,7 +49,7 @@ func (b *Binance) MapExchangeSymbols() error {
 				AggTrades: []models.AggTrade{},
 				Ticker:    models.Ticker{},
 				Depth:     models.Depth{},
-				Streams:   models.SymbolStreams{
+				Streams: models.SymbolStreams{
 					KlineStop:  make(chan struct{}),
 					AggStop:    make(chan struct{}),
 					TickerStop: make(chan struct{}),
@@ -60,7 +61,6 @@ func (b *Binance) MapExchangeSymbols() error {
 
 	return nil
 }
-
 
 func (b *Binance) SubscribeSymbol(symbol string) {
 	b.mu.Lock()
