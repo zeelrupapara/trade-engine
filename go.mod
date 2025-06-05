@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/adshao/go-binance/v2 v2.8.2
 	github.com/doug-martin/goqu/v9 v9.18.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.9

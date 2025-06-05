@@ -1,11 +1,8 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/nats-io/nats.go"
@@ -26,6 +23,8 @@ type EngineCore struct {
 	Nats *nats.Conn
 	// Exchange Connection Map for multiple exchanges like binance
 	Exchange map[string]interface{}
+	// Stop channel for shutdown the service
+	StopCh chan os.Signal
 }
 
 func NewEngineCore(config config.AppConfig, logger *zap.Logger, db *goqu.Database, nats *nats.Conn) *EngineCore {
@@ -34,12 +33,10 @@ func NewEngineCore(config config.AppConfig, logger *zap.Logger, db *goqu.Databas
 }
 
 func (ec *EngineCore) StartEngine() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	// Load Exchanges Configs
 	exchanges, err := yamlconf.LoadExchangeConfig("exchange.yaml")
 	if err != nil {
-		ec.Logger.Error(err.Error(), zap.Any("Config", "LoadExchangeConfig"))
+		ec.Logger.Error("Failed to load exchange config", zap.Error(err))
 	}
 
 	// Load Exchanges
@@ -47,29 +44,21 @@ func (ec *EngineCore) StartEngine() {
 		if exchange.Active {
 			ec.Logger.Info(fmt.Sprintf("Loading %s Client", exchange.Name))
 			ec.AddExchangeClient(exchange.Name)
+
 			ec.Logger.Info(fmt.Sprintf("Loading %s Symbols", exchange.Name))
 			if err := ec.LoadExSymbols(exchange.Name); err != nil {
-				ec.Logger.Fatal(err.Error(), zap.Any("Config", "LoadExSymbols"))
+				ec.Logger.Fatal("Failed to load symbols", zap.String("exchange", exchange.Name), zap.Error(err))
 			}
 		}
 	}
 
-	// Listen to symbol events
+	// Subscribe to symbol events
 	subSymbol := models.SubjectEngineSymbol
 	_, err = ec.Nats.QueueSubscribe(subSymbol, models.GroupSymbol, ec.SymbolsEventHandler)
 	if err != nil {
-		ec.Logger.Fatal(err.Error(), zap.Any("Nats", "Subscribe"))
+		ec.Logger.Fatal("NATS subscription failed", zap.String("subject", subSymbol), zap.Error(err))
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
-	for {
-		select {
-		case v := <-quit:
-			ec.Logger.Sugar().Infof("Received signal %v", v)
-		case done := <-ctx.Done():
-			ec.Logger.Sugar().Infof("Received signal %v", done)
-		}
-	}
+	<-ec.StopCh
+	ec.Logger.Info("Shutting down")
 }
