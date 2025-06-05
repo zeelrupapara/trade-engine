@@ -32,8 +32,8 @@ func GetAPICommandDef(cfg config.AppConfig, logger *zap.Logger) cobra.Command {
 			}
 
 			// Init Engine Core
-			ec := handlers.NewEngineCore(cfg, logger, db)
-			err = ec.StartEngine()
+			ec := handlers.NewEngineCore(cfg, logger, db, nats.Nc)
+			ec.StartEngine()
 			if err != nil {
 				logger.Error(err.Error(), zap.Any("Setup", "Init Engine Core"))
 				return err

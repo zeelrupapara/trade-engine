@@ -18,33 +18,42 @@ type Binance struct {
 	mu      sync.Mutex
 	Logger  *zap.Logger
 }
-
 func NewBinanceClient(cfg *config.AppConfig, logger *zap.Logger) *Binance {
 	client := binance.NewClient(cfg.Binance.APIKey, cfg.Binance.APISecret)
-	logger.Info("Binance Client Created")
-	return &Binance{
+	b := &Binance{
 		Client:  client,
 		Logger:  logger,
 		Symbols: make(map[string]*models.SymbolData),
 	}
+	return b
 }
 
 func (b *Binance) MapExchangeSymbols() error {
+	if b.Symbols == nil {
+		b.Logger.Warn("Symbols map was nil, initializing")
+		b.Symbols = make(map[string]*models.SymbolData)
+	}
+
 	exchangeInfo, err := b.Client.NewExchangeInfoService().Do(context.Background())
 	if err != nil {
 		b.Logger.Error(err.Error(), zap.Any("Config", "LoadExSymbols"))
 		return err
 	}
 
-	// Get Symbols and map in the core memory
 	for _, symbol := range exchangeInfo.Symbols {
 		if symbol.Status == "TRADING" && symbol.QuoteAsset == "USDT" {
+			b.Logger.Debug("Symbol Ready to Map", zap.String("symbol", symbol.Symbol))
 			b.Symbols[symbol.Symbol] = &models.SymbolData{
 				Klines:    []models.Kline{},
 				AggTrades: []models.AggTrade{},
 				Ticker:    models.Ticker{},
 				Depth:     models.Depth{},
-				Streams:   models.SymbolStreams{},
+				Streams:   models.SymbolStreams{
+					KlineStop:  make(chan struct{}),
+					AggStop:    make(chan struct{}),
+					TickerStop: make(chan struct{}),
+					DepthStop:  make(chan struct{}),
+				},
 			}
 		}
 	}
@@ -52,13 +61,9 @@ func (b *Binance) MapExchangeSymbols() error {
 	return nil
 }
 
+
 func (b *Binance) SubscribeSymbol(symbol string) {
 	b.mu.Lock()
-	if _, exists := b.Symbols[symbol]; exists {
-		b.mu.Unlock()
-		b.Logger.Info("Symbol already subscribed", zap.String("symbol", symbol))
-		return
-	}
 	data := &models.SymbolData{
 		Streams: models.SymbolStreams{
 			KlineStop:  make(chan struct{}),
@@ -74,6 +79,7 @@ func (b *Binance) SubscribeSymbol(symbol string) {
 	go b.startAggTrade(symbol, data.Streams.AggStop)
 	go b.startTicker(symbol, data.Streams.TickerStop)
 	go b.startDepth(symbol, data.Streams.DepthStop)
+	b.Logger.Info("Successfully Subscribed symbol", zap.String("symbol", symbol))
 }
 
 func (b *Binance) UnsubscribeSymbol(symbol string) {

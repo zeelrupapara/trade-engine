@@ -18,3 +18,19 @@ func (ec *EngineCore) LoadExSymbols(exchangeName string) error {
 	}
 	return nil
 }
+
+func (ec *EngineCore) SubcribeSymbol(exchangeName, symbol string) error {
+	switch exchangeName {
+	case constants.BINANCE:
+		ec.Exchange[constants.BINANCE].(*exchange.Binance).SubscribeSymbol(symbol)
+	}
+	return nil
+}
+
+func (ec *EngineCore) UnsubcribeSymbol(exchangeName, symbol string) error {
+	switch exchangeName {
+	case constants.BINANCE:
+		ec.Exchange[constants.BINANCE].(*exchange.Binance).UnsubscribeSymbol(symbol)
+	}
+	return nil
+}
