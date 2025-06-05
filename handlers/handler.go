@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/doug-martin/goqu/v9"
+	"github.com/nats-io/nats.go"
 	"gitlab.com/zeelrupapara/trade-engine/config"
 	yamlconf "gitlab.com/zeelrupapara/trade-engine/config/exchange"
-	"gitlab.com/zeelrupapara/trade-engine/models"
 	"go.uber.org/zap"
 )
 
@@ -17,19 +17,14 @@ type EngineCore struct {
 	Logger *zap.Logger
 	// Database client connection
 	DB *goqu.Database
+	// Nats message broker connection
+	Nats *nats.Conn
 	// Exchange Connection Map for multiple exchanges like binance
-	Exchange *models.Exchange
-	// Users Symbols map[exchange][USDT] = SymbolSettings
-	Symbols map[string][]models.Symbol
+	Exchange map[string]interface{}
 }
 
 func NewEngineCore(config config.AppConfig, logger *zap.Logger, db *goqu.Database) *EngineCore {
-	exchange := models.Exchange{
-		Clients: map[string]interface{}{},
-		Symbols: map[string][]string{},
-		Active:  false,
-	}
-	ec := EngineCore{Config: config, Logger: logger, DB: db, Exchange: &exchange}
+	ec := EngineCore{Config: config, Logger: logger, DB: db, Exchange: make(map[string]interface{})}
 	return &ec
 }
 
@@ -43,13 +38,17 @@ func (ec *EngineCore) StartEngine() error {
 
 	// Load Exchanges Symbols
 	for _, exchange := range exchanges.Exchanges {
-		ec.Logger.Info(fmt.Sprintf("Loading %s Client", exchange.Name))
-		ec.AddExchangeClient(exchange.Name, exchange.Active)
-		ec.Logger.Info(fmt.Sprintf("Loading %s Symbols", exchange.Name))
-		if err := ec.LoadExSymbols(exchange.Name, exchange.Active); err != nil {
-			ec.Logger.Error(err.Error(), zap.Any("Config", "LoadExSymbols"))
-			return err
+		if exchange.Active {
+			ec.Logger.Info(fmt.Sprintf("Loading %s Client", exchange.Name))
+			ec.AddExchangeClient(exchange.Name)
+			ec.Logger.Info(fmt.Sprintf("Loading %s Symbols", exchange.Name))
+			if err := ec.LoadExSymbols(exchange.Name); err != nil {
+				ec.Logger.Error(err.Error(), zap.Any("Config", "LoadExSymbols"))
+				return err
+			}
+
 		}
+
 	}
 	return nil
 }
