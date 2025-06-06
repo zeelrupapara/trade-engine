@@ -12,6 +12,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	MaxKlines    = 1000
+	MaxAggTrades = 1000
+)
+
 type Binance struct {
 	Client  *binance.Client
 	Symbols map[string]*models.SymbolData
@@ -103,7 +108,7 @@ func (b *Binance) startKline(symbol string, stopChan chan struct{}) {
 	doneC, _, err := binance.WsKlineServe(symbol, "1m", func(e *binance.WsKlineEvent) {
 		b.mu.Lock()
 		if data, ok := b.Symbols[symbol]; ok {
-			data.Klines = append(data.Klines, models.Kline{
+			kline := models.Kline{
 				Symbol:    e.Symbol,
 				StartTime: time.UnixMilli(e.Kline.StartTime),
 				EndTime:   time.UnixMilli(e.Kline.EndTime),
@@ -112,7 +117,11 @@ func (b *Binance) startKline(symbol string, stopChan chan struct{}) {
 				Low:       utils.ParseFloat(e.Kline.Low),
 				Close:     utils.ParseFloat(e.Kline.Close),
 				Volume:    utils.ParseFloat(e.Kline.Volume),
-			})
+			}
+			data.Klines = append(data.Klines, kline)
+			if len(data.Klines) > MaxKlines {
+				data.Klines = data.Klines[len(data.Klines)-MaxKlines:]
+			}
 		}
 		b.mu.Unlock()
 	}, b.errorHandler(symbol, "kline"))
@@ -129,12 +138,16 @@ func (b *Binance) startAggTrade(symbol string, stopChan chan struct{}) {
 	doneC, _, err := binance.WsAggTradeServe(symbol, func(e *binance.WsAggTradeEvent) {
 		b.mu.Lock()
 		if data, ok := b.Symbols[symbol]; ok {
-			data.AggTrades = append(data.AggTrades, models.AggTrade{
+			trade := models.AggTrade{
 				Symbol:    e.Symbol,
 				Price:     utils.ParseFloat(e.Price),
 				Quantity:  utils.ParseFloat(e.Quantity),
 				Timestamp: time.UnixMilli(e.Time),
-			})
+			}
+			data.AggTrades = append(data.AggTrades, trade)
+			if len(data.AggTrades) > MaxAggTrades {
+				data.AggTrades = data.AggTrades[len(data.AggTrades)-MaxAggTrades:]
+			}
 		}
 		b.mu.Unlock()
 	}, b.errorHandler(symbol, "aggTrade"))
