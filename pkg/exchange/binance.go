@@ -126,7 +126,7 @@ func (b *Binance) UnsubscribeSymbol(symbol string) {
 
 // startKline listens to 1m candlestick events and stores them in the ring buffer.
 func (b *Binance) startKline(symbol string, stopChan chan struct{}) {
-	doneC, _, err := binance.WsKlineServe(symbol, "1m",
+	doneC, _, err := binance.WsKlineServe(symbol, "5m",
 		func(e *binance.WsKlineEvent) {
 			b.mu.Lock()
 			defer b.mu.Unlock()
