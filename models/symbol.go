@@ -8,8 +8,8 @@ type SymbolData struct {
 	AggTradesBuf *ringbuf.RingBuffer[AggTrade]
 
 	// We still overwrite the latest Ticker and Depth on each update.
-	Ticker       Ticker
-	Depth        Depth
-	
-	Streams      SymbolStreams
+	Ticker Ticker
+	Depth  Depth
+
+	Streams SymbolStreams
 }
