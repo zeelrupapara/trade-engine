@@ -1,5 +1,7 @@
 package handlers
 
+import "math"
+
 // EMA computes the Exponential Moving Average for the given data and period.
 // EMA = (price - prevEMA) * (2/(period+1)) + prevEMA:contentReference[oaicite:0]{index=0}.
 func EMA(data []float64, period int) float64 {
@@ -77,4 +79,35 @@ func MACD(data []float64) (macdLine float64, signalLine float64, histo float64) 
 	}
 	histo = macdLine - signalLine
 	return
+}
+
+// ATR computes the latest Average True Range over the given period.
+// high[i], low[i], close[i] must be aligned time‑series slices of equal length.
+func ATR(high, low, close []float64, period int) float64 {
+	// need at least period+1 points to compute the first TR
+	if len(high) != len(low) || len(low) != len(close) || len(close) < period+1 {
+		return 0.0
+	}
+
+	// build True Range (TR) series
+	tr := make([]float64, 0, len(close)-1)
+	for i := 1; i < len(close); i++ {
+		hl := high[i] - low[i]
+		hc := math.Abs(high[i] - close[i-1])
+		lc := math.Abs(low[i] - close[i-1])
+		tr = append(tr, math.Max(hl, math.Max(hc, lc)))
+	}
+
+	// first ATR = simple average of first 'period' TRs
+	sum := 0.0
+	for i := 0; i < period; i++ {
+		sum += tr[i]
+	}
+	atr := sum / float64(period)
+
+	// Wilder smoothing
+	for i := period; i < len(tr); i++ {
+		atr = (atr*float64(period-1) + tr[i]) / float64(period)
+	}
+	return atr
 }
