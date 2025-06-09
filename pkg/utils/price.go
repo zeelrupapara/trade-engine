@@ -1,9 +1,12 @@
 package utils
 
-import "gitlab.com/zeelrupapara/trade-engine/models"
+import (
+	"gitlab.com/zeelrupapara/trade-engine/constants"
+	"gitlab.com/zeelrupapara/trade-engine/models"
+)
 
 func GetPricesFromCandles(candles []models.Kline, interval int) []float64 {
-	baseInterval := 5 // base candle interval in minutes
+	baseInterval := constants.DEFAULT_CANDLE_INTERVAL // base candle interval in minutes
 
 	if interval < baseInterval {
 		// invalid interval, return empty slice or handle error as you want
