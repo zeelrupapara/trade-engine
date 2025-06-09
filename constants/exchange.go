@@ -5,5 +5,5 @@ const (
 )
 
 const (
-	DEFAULT_CANDLE_INTERVAL int = 5 // in minutes
+	DEFAULT_CANDLE_INTERVAL int = 1 // in minutes
 )
