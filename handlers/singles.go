@@ -24,7 +24,7 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			ec.Logger.Info("Compute EMR Signal", zap.String("symbol", symbol), zap.String("exchange", exchangeName), zap.Int("interval", interval))
 			// choose sterategy
 			signal = handlers.ComputeEMRDecision(prices)
-			ec.Logger.Sugar().Infof("Signal: %v", signal)
+			ec.Logger.Sugar().Infof("Signal: %v", signal, zap.String("symbol", symbol), zap.String("exchange", exchangeName), zap.Int("interval", interval))
 		}
 
 		// Publish signal to the nats
