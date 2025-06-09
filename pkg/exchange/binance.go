@@ -3,6 +3,7 @@ package exchange
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -72,7 +73,7 @@ func (b *Binance) MapExchangeSymbols() error {
 				},
 				Settings: &models.SymbolSettings{
 					TradeCount:      0,
-					Interval:        5,
+					Interval:        constants.DEFAULT_CANDLE_INTERVAL,
 					Strategy:        models.StrategyType(constants.EMR),
 					WorkflowCloseCh: make(chan int, 1),
 				},
@@ -102,7 +103,7 @@ func (b *Binance) SubscribeSymbol(symbol string) {
 		},
 		Settings: &models.SymbolSettings{
 			TradeCount:      0,
-			Interval:        5,
+			Interval:        constants.DEFAULT_CANDLE_INTERVAL,
 			Strategy:        models.StrategyType(constants.EMR),
 			WorkflowCloseCh: make(chan int, 1),
 		},
@@ -139,7 +140,7 @@ func (b *Binance) UnsubscribeSymbol(symbol string) {
 
 // startKline listens to 1m candlestick events and stores them in the ring buffer.
 func (b *Binance) startKline(symbol string, stopChan chan struct{}) {
-	doneC, _, err := binance.WsKlineServe(symbol, "5m",
+	doneC, _, err := binance.WsKlineServe(symbol, fmt.Sprintf("%dm", constants.DEFAULT_CANDLE_INTERVAL),
 		func(e *binance.WsKlineEvent) {
 			b.mu.Lock()
 			defer b.mu.Unlock()
