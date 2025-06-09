@@ -49,7 +49,7 @@ func (ec *EngineCore) StartEngine() {
 
 	// Load Watchers
 	ec.InitWatcher()
-	
+
 	<-ec.StopCh
 	ec.Logger.Info("Shutting down")
 }

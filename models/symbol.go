@@ -11,7 +11,7 @@ type SymbolData struct {
 	Ticker Ticker
 	Depth  Depth
 
-	Streams SymbolStreams
+	Streams  SymbolStreams
 	Settings *SymbolSettings
 }
 
