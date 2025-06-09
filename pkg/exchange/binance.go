@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"gitlab.com/zeelrupapara/trade-engine/config"
+	"gitlab.com/zeelrupapara/trade-engine/constants"
 	"gitlab.com/zeelrupapara/trade-engine/models"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/ringbuf"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/utils"
@@ -69,6 +70,12 @@ func (b *Binance) MapExchangeSymbols() error {
 					TickerStop: make(chan struct{}),
 					DepthStop:  make(chan struct{}),
 				},
+				Settings: &models.SymbolSettings{
+					TradeCount:      0,
+					Interval:        5,
+					Strategy:        models.StrategyType(constants.EMR),
+					WorkflowCloseCh: make(chan int, 1),
+				},
 			}
 		}
 	}
@@ -92,6 +99,12 @@ func (b *Binance) SubscribeSymbol(symbol string) {
 			AggStop:    make(chan struct{}),
 			TickerStop: make(chan struct{}),
 			DepthStop:  make(chan struct{}),
+		},
+		Settings: &models.SymbolSettings{
+			TradeCount:      0,
+			Interval:        5,
+			Strategy:        models.StrategyType(constants.EMR),
+			WorkflowCloseCh: make(chan int, 1),
 		},
 	}
 	b.Symbols[symbol] = data

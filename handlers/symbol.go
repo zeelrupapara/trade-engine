@@ -23,6 +23,9 @@ func (ec *EngineCore) SubcribeSymbol(exchangeName, symbol string) {
 	switch exchangeName {
 	case constants.BINANCE:
 		ec.Exchange[constants.BINANCE].(*exchange.Binance).SubscribeSymbol(symbol)
+		// take small day for data collection time.sleep(10 sec)
+		ec.Logger.Info("Init Bot Workflow", zap.String("symbol", symbol), zap.String("exchange", exchangeName), zap.Int("interval", ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[symbol].Settings.Interval))
+		ec.InitBotWorkflow(symbol, exchangeName, ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[symbol].Settings.Interval)
 	}
 }
 
@@ -30,5 +33,6 @@ func (ec *EngineCore) UnsubcribeSymbol(exchangeName, symbol string) {
 	switch exchangeName {
 	case constants.BINANCE:
 		ec.Exchange[constants.BINANCE].(*exchange.Binance).UnsubscribeSymbol(symbol)
+		ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[symbol].Settings.WorkflowCloseCh <- 1
 	}
 }
