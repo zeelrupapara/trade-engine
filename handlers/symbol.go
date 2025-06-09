@@ -23,6 +23,7 @@ func (ec *EngineCore) SubcribeSymbol(exchangeName, symbol string) {
 	switch exchangeName {
 	case constants.BINANCE:
 		ec.Exchange[constants.BINANCE].(*exchange.Binance).SubscribeSymbol(symbol)
+		ec.InitBotWorkflow(symbol, exchangeName, ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[symbol].Settings.Interval)
 	}
 }
 
@@ -30,5 +31,6 @@ func (ec *EngineCore) UnsubcribeSymbol(exchangeName, symbol string) {
 	switch exchangeName {
 	case constants.BINANCE:
 		ec.Exchange[constants.BINANCE].(*exchange.Binance).UnsubscribeSymbol(symbol)
+		ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[symbol].Settings.WorkflowCloseCh <- 1
 	}
 }

@@ -2,6 +2,8 @@ package models
 
 type SymbolEventType string
 
+type StrategyType string
+
 const (
 	SymbolEventType_AddSymbol    SymbolEventType = "add"
 	SymbolEventType_RemoveSymbol SymbolEventType = "remove"

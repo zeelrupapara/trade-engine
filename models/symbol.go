@@ -11,5 +11,16 @@ type SymbolData struct {
 	Ticker Ticker
 	Depth  Depth
 
-	Streams SymbolStreams
+	Streams  SymbolStreams
+	Settings *SymbolSettings
+}
+
+type SymbolSettings struct {
+	TradeCount int
+	// Interval of compute signal
+	Interval int
+	// Sterategy
+	Strategy StrategyType
+	// Workflow Close Chennel
+	WorkflowCloseCh chan int
 }

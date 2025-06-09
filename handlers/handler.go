@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/nats-io/nats.go"
 	"gitlab.com/zeelrupapara/trade-engine/config"
 	yamlconf "gitlab.com/zeelrupapara/trade-engine/config/exchange"
-	"gitlab.com/zeelrupapara/trade-engine/models"
 	"go.uber.org/zap"
 )
 
@@ -28,7 +26,14 @@ type EngineCore struct {
 }
 
 func NewEngineCore(config config.AppConfig, logger *zap.Logger, db *goqu.Database, nats *nats.Conn) *EngineCore {
-	ec := EngineCore{Config: config, Logger: logger, DB: db, Nats: nats, Exchange: make(map[string]interface{})}
+	ec := EngineCore{
+		Config:   config,
+		Logger:   logger,
+		DB:       db,
+		Nats:     nats,
+		Exchange: make(map[string]interface{}),
+		StopCh:   make(chan os.Signal, 1),
+	}
 	return &ec
 }
 
@@ -40,24 +45,10 @@ func (ec *EngineCore) StartEngine() {
 	}
 
 	// Load Exchanges
-	for _, exchange := range exchanges.Exchanges {
-		if exchange.Active {
-			ec.Logger.Info(fmt.Sprintf("Loading %s Client", exchange.Name))
-			ec.AddExchangeClient(exchange.Name)
+	ec.LoadExchanges(exchanges)
 
-			ec.Logger.Info(fmt.Sprintf("Loading %s Symbols", exchange.Name))
-			if err := ec.LoadExSymbols(exchange.Name); err != nil {
-				ec.Logger.Fatal("Failed to load symbols", zap.String("exchange", exchange.Name), zap.Error(err))
-			}
-		}
-	}
-
-	// Subscribe to symbol events
-	subSymbol := models.SubjectEngineSymbol
-	_, err = ec.Nats.QueueSubscribe(subSymbol, models.GroupSymbol, ec.SymbolsEventHandler)
-	if err != nil {
-		ec.Logger.Fatal("NATS subscription failed", zap.String("subject", subSymbol), zap.Error(err))
-	}
+	// Load Watchers
+	ec.InitWatcher()
 
 	<-ec.StopCh
 	ec.Logger.Info("Shutting down")

@@ -3,6 +3,7 @@ package exchange
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"gitlab.com/zeelrupapara/trade-engine/config"
+	"gitlab.com/zeelrupapara/trade-engine/constants"
 	"gitlab.com/zeelrupapara/trade-engine/models"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/ringbuf"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/utils"
@@ -69,6 +71,12 @@ func (b *Binance) MapExchangeSymbols() error {
 					TickerStop: make(chan struct{}),
 					DepthStop:  make(chan struct{}),
 				},
+				Settings: &models.SymbolSettings{
+					TradeCount:      0,
+					Interval:        constants.DEFAULT_CANDLE_INTERVAL,
+					Strategy:        models.StrategyType(constants.EMR),
+					WorkflowCloseCh: make(chan int, 1),
+				},
 			}
 		}
 	}
@@ -92,6 +100,12 @@ func (b *Binance) SubscribeSymbol(symbol string) {
 			AggStop:    make(chan struct{}),
 			TickerStop: make(chan struct{}),
 			DepthStop:  make(chan struct{}),
+		},
+		Settings: &models.SymbolSettings{
+			TradeCount:      0,
+			Interval:        constants.DEFAULT_CANDLE_INTERVAL,
+			Strategy:        models.StrategyType(constants.EMR),
+			WorkflowCloseCh: make(chan int, 1),
 		},
 	}
 	b.Symbols[symbol] = data
@@ -126,7 +140,7 @@ func (b *Binance) UnsubscribeSymbol(symbol string) {
 
 // startKline listens to 1m candlestick events and stores them in the ring buffer.
 func (b *Binance) startKline(symbol string, stopChan chan struct{}) {
-	doneC, _, err := binance.WsKlineServe(symbol, "5m",
+	doneC, _, err := binance.WsKlineServe(symbol, fmt.Sprintf("%dm", constants.DEFAULT_CANDLE_INTERVAL),
 		func(e *binance.WsKlineEvent) {
 			b.mu.Lock()
 			defer b.mu.Unlock()
