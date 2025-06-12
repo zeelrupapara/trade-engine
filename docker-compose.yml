@@ -4,13 +4,13 @@ services:
     image: postgres:15.2-alpine
     container_name: postgresdb
     environment:
-      POSTGRES_USER: news
-      POSTGRES_PASSWORD: news
-      POSTGRES_DB: news
+      POSTGRES_USER: engineuser
+      POSTGRES_PASSWORD: enginepass
+      POSTGRES_DB: enginecore
     ports:
     - 5432:5432
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    # volumes:
+      # - pgdata:/var/lib/postgresql/data
 
   nats:
     image: nats:2.9.14-alpine3.17

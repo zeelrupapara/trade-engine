@@ -12,4 +12,7 @@ func (ec *EngineCore) InitWatcher() {
 	if err != nil {
 		ec.Logger.Fatal("NATS subscription failed", zap.String("subject", subSymbol), zap.Error(err))
 	}
+
+	// Subcribe to the papar trading engine simulator for fake order to test the bot
+	ec.SubscribeToOrders()
 }

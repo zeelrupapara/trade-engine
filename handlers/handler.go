@@ -7,6 +7,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"gitlab.com/zeelrupapara/trade-engine/config"
 	yamlconf "gitlab.com/zeelrupapara/trade-engine/config/exchange"
+	"gitlab.com/zeelrupapara/trade-engine/models"
 	"go.uber.org/zap"
 )
 
@@ -21,6 +22,8 @@ type EngineCore struct {
 	Nats *nats.Conn
 	// Exchange Connection Map for multiple exchanges like binance
 	Exchange map[string]interface{}
+	// For opened positions
+	Positions map[string]*models.Position
 	// Stop channel for shutdown the service
 	StopCh chan os.Signal
 }

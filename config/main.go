@@ -17,6 +17,7 @@ type AppConfig struct {
 	IsDevelopment bool   `envconfig:"IS_DEVELOPMENT"`
 	Debug         bool   `envconfig:"DEBUG"`
 	Port          string `envconfig:"APP_PORT"`
+	PaperTrade    bool   `envconfig:"PAPAR_TRADE"`
 	DB            DBConfig
 	Nats          NatsConfig
 	Binance       cfg.BinanceCfg

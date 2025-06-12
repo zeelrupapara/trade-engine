@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 
-	indicators "gitlab.com/zeelrupapara/trade-engine/handlers/indicators"
 	"gitlab.com/zeelrupapara/trade-engine/models"
+	"gitlab.com/zeelrupapara/trade-engine/pkg/indicators"
 )
 
 func ComputeEMRDecision(prices []float64) models.StrategiesSignal {
