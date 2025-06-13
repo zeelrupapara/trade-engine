@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"time"
 
+	"github.com/doug-martin/goqu/v9"
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"gitlab.com/zeelrupapara/trade-engine/constants"
 	"gitlab.com/zeelrupapara/trade-engine/models"
@@ -12,8 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// ---------- NATS SUBSCRIPTION ----------
+
 func (ec *EngineCore) SubscribeToOrders() {
-	_, err := ec.Nats.Subscribe("orders.new", func(msg *nats.Msg) {
+	_, err := ec.Nats.Subscribe("orders.*", func(msg *nats.Msg) {
 		var order models.Order
 		if err := json.Unmarshal(msg.Data, &order); err != nil {
 			ec.Logger.Error("Invalid order format", zap.Error(err))
@@ -26,9 +31,13 @@ func (ec *EngineCore) SubscribeToOrders() {
 	}
 }
 
+// ---------- PROCESS NEW ORDER ----------
+
 func (ec *EngineCore) ProcessNewOrder(order models.Order) {
 	pos := &models.Position{
 		OrderID:    order.OrderID,
+		AccountID:  order.AccountID,
+		Exchange:   order.Exchange,
 		Symbol:     order.Symbol,
 		Side:       order.Side,
 		EntryPrice: order.EntryPrice,
@@ -98,7 +107,7 @@ func ShouldClose(pos *models.Position, price float64) bool {
 	}
 }
 
-// ---------- POSITION CLOSURE ----------
+// ---------- POSITION CLOSURE + DEAL + ACCOUNT UPDATE ----------
 
 func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, price float64) {
 	now := time.Now()
@@ -119,6 +128,29 @@ func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, pr
 	pos.Status = "closed"
 	pos.ClosedAt = &now
 
+	if err := ec.ApplyProfitToAccount(pos.AccountID, netProfit); err != nil {
+		ec.Logger.Error("❌ Failed to update account", zap.Error(err))
+		return
+	}
+
+	deal := &models.Deal{
+		ID:         uuid.New().String(),
+		OrderID:    pos.OrderID,
+		AccountID:  pos.AccountID,
+		Symbol:     pos.Symbol,
+		Side:       pos.Side,
+		EntryPrice: pos.EntryPrice,
+		ExitPrice:  price,
+		Qty:        pos.Qty,
+		Profit:     netProfit,
+		Commission: commission,
+		Timestamp:  now,
+	}
+	if err := ec.DB.Insert(deal).Error(); err != nil {
+		ec.Logger.Error("❌ Failed to insert deal", zap.Error(err))
+		return
+	}
+
 	if err := ec.UpdateClosedPositionInDB(pos); err != nil {
 		ec.Logger.Error("❌ Failed to update closed position", zap.Error(err))
 		return
@@ -134,5 +166,35 @@ func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, pr
 }
 
 func (ec *EngineCore) UpdateClosedPositionInDB(pos *models.Position) error {
-	return ec.DB.Insert(pos).Error()
+	_, err := ec.DB.Update("positions").
+		Set(goqu.Record{
+			"exit_price": pos.ExitPrice,
+			"profit":     pos.Profit,
+			"commission": pos.Commission,
+			"status":     pos.Status,
+			"closed_at":  pos.ClosedAt,
+		}).
+		Where(goqu.C("order_id").Eq(pos.OrderID)).
+		Executor().
+		Exec()
+	return err
+}
+
+func (ec *EngineCore) ApplyProfitToAccount(accountID string, profit float64) error {
+	if ec.Account == nil || ec.Account.ID != accountID {
+		return fmt.Errorf("❌ account not loaded in memory or mismatched")
+	}
+
+	ec.Account.Balance += profit
+	ec.Account.UpdatedAt = time.Now()
+
+	_, err := ec.DB.Update("accounts").
+		Set(goqu.Record{
+			"balance":    ec.Account.Balance,
+			"updated_at": ec.Account.UpdatedAt,
+		}).
+		Where(goqu.C("id").Eq(accountID)).
+		Executor().
+		Exec()
+	return err
 }

@@ -3,19 +3,20 @@ package models
 import "time"
 
 type Position struct {
-	ID         uint `gorm:"primaryKey"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	ClosedAt   *time.Time
-	Exchange   string  `json:"exchange"`
-	OrderID    string  `gorm:"uniqueIndex;not null"`
-	Symbol     string  `gorm:"size:20;not null"`
-	Side       string  `gorm:"size:10;not null"`
-	Qty        float64 `gorm:"not null"`
-	EntryPrice float64 `gorm:"not null"`
-	ExitPrice  *float64
-	Profit     *float64
-	Commission *float64
-	Status     string `gorm:"size:10;default:'open'"`
-	Reason     string `gorm:"type:text"`
+	ID         uint       `db:"id"`
+	CreatedAt  time.Time  `db:"created_at"`
+	UpdatedAt  time.Time  `db:"updated_at"`
+	ClosedAt   *time.Time `db:"closed_at"`
+	Exchange   string     `db:"exchange"`
+	OrderID    string     `db:"order_id"`
+	Symbol     string     `db:"symbol"`
+	Side       string     `db:"side"`
+	Qty        float64    `db:"qty"`
+	EntryPrice float64    `db:"entry_price"`
+	ExitPrice  *float64   `db:"exit_price"`
+	Profit     *float64   `db:"profit"`
+	Commission *float64   `db:"commission"`
+	AccountID  string     `db:"account_id"`
+	Status     string     `db:"status"`
+	Reason     string     `db:"reason"`
 }

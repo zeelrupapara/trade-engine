@@ -22,6 +22,8 @@ type EngineCore struct {
 	Nats *nats.Conn
 	// Exchange Connection Map for multiple exchanges like binance
 	Exchange map[string]interface{}
+	// single account loaded once
+	Account *models.Account
 	// For opened positions
 	Positions map[string]*models.Position
 	// Stop channel for shutdown the service
@@ -30,12 +32,14 @@ type EngineCore struct {
 
 func NewEngineCore(config config.AppConfig, logger *zap.Logger, db *goqu.Database, nats *nats.Conn) *EngineCore {
 	ec := EngineCore{
-		Config:   config,
-		Logger:   logger,
-		DB:       db,
-		Nats:     nats,
-		Exchange: make(map[string]interface{}),
-		StopCh:   make(chan os.Signal, 1),
+		Config:    config,
+		Logger:    logger,
+		DB:        db,
+		Nats:      nats,
+		Exchange:  make(map[string]interface{}),
+		StopCh:    make(chan os.Signal, 1),
+		Account:   &models.Account{},
+		Positions: map[string]*models.Position{},
 	}
 	return &ec
 }
@@ -49,7 +53,10 @@ func (ec *EngineCore) StartEngine() {
 
 	// Load Exchanges
 	ec.LoadExchanges(exchanges)
-
+	// Load Accounts
+	ec.LoadOrCreateAccountByName("bot")
+	// Load positions
+	ec.LoadOpenPositions()
 	// Load Watchers
 	ec.InitWatcher()
 

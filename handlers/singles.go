@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/doug-martin/goqu/v9"
 	"gitlab.com/zeelrupapara/trade-engine/constants"
 	handlers "gitlab.com/zeelrupapara/trade-engine/handlers/strategy"
 	"gitlab.com/zeelrupapara/trade-engine/models"
@@ -36,6 +37,7 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			// 4. Prepare order
 			reason := signal.Reason
 			order := models.Order{
+				OrderID:    utils.GenerateUUID(),
 				Exchange:   exchangeName,
 				Symbol:     symbol,
 				EntryPrice: symbolData.Ticker.BidPrice,
@@ -49,9 +51,8 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			ec.Logger.Sugar().Infof("Order: %+v | SL: %.2f | TP: %.2f | Reason: %s", order, sl, tp, reason)
 
 			// 5. Insert order record into DB
-			_, err := ec.DB.Insert("orders").Rows(goquRecordFromOrder(order, sl, tp, reason)).Executor().Exec()
-			if err != nil {
-				ec.Logger.Error("Failed to insert order", zap.Error(err))
+			if err := ec.InsertOrderToDB(order); err != nil {
+				ec.Logger.Error("Failed to insert order to DB", zap.Error(err))
 				return
 			}
 
@@ -61,7 +62,7 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 				ec.Logger.Error("Failed to marshal order", zap.Error(err))
 				return
 			}
-			ec.Nats.Publish("signal."+symbol, orderBytes)
+			ec.Nats.Publish("orders."+symbol, orderBytes)
 		}
 
 		// Publish signal to the nats
@@ -69,18 +70,27 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 	}
 }
 
-// goquRecordFromOrder converts models.Order to a map for DB insertion
-func goquRecordFromOrder(order models.Order, sl, tp float64, reason string) map[string]interface{} {
-	return map[string]interface{}{
-		"exchange":  order.Exchange,
-		"symbol":    order.Symbol,
-		"price":     order.EntryPrice,
-		"quantity":  order.Qty,
-		"side":      order.Side,
-		"type":      "MARKET",
-		"sl":        sl,
-		"tp":        tp,
-		"reason":    reason,
-		"timestamp": time.Now(),
+func (ec *EngineCore) InsertOrderToDB(order models.Order) error {
+	record := map[string]interface{}{
+		"order_id":    order.OrderID,
+		"exchange":    order.Exchange,
+		"account_id":  order.AccountID,
+		"symbol":      order.Symbol,
+		"side":        order.Side,
+		"entry_price": order.EntryPrice,
+		"sl":          order.SL,
+		"tp":          order.TP,
+		"qty":         order.Qty,
+		"reason":      order.Reason,
+		"status":      "new",
+		"timestamp":   time.Now(),
+		"created_at":  time.Now(),
+		"updated_at":  time.Now(),
 	}
+
+	_, err := ec.DB.Insert(goqu.T("orders")).Rows(record).Executor().Exec()
+	if err != nil {
+		ec.Logger.Error("❌ Failed to insert order", zap.Error(err))
+	}
+	return err
 }

@@ -1,0 +1,9 @@
+-- +migrate Up
+CREATE TABLE IF NOT EXISTS accounts (
+	id TEXT PRIMARY KEY,
+	name TEXT UNIQUE NOT NULL,
+	balance DOUBLE PRECISION,
+	equity DOUBLE PRECISION,
+	created_at TIMESTAMPTZ,
+	updated_at TIMESTAMPTZ
+);

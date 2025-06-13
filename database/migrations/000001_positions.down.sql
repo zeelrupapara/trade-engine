@@ -1,2 +1,2 @@
 -- +migrate Down
-DROP TABLE IF NOT EXISTS positions;
+DROP TABLE IF EXISTS positions;

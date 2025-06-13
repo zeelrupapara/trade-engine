@@ -8,9 +8,8 @@ import (
 
 // ComputeOrderVolume - calculate quantity based on fixed risk per trade
 func (ec *EngineCore) ComputeOrderVolume(price, atr float64) float64 {
-	capital := 1000.0
 	riskPercent := 0.01
-	riskAmount := capital * riskPercent
+	riskAmount := ec.Account.Balance * riskPercent
 
 	if atr == 0 || price == 0 {
 		return 0
