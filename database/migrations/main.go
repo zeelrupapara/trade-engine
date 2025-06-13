@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"strconv"
 
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
@@ -11,26 +10,44 @@ import (
 	"gitlab.com/zeelrupapara/trade-engine/config"
 )
 
-var db *sql.DB
-var dbURL string
-var err error
+var dbInstance *goqu.Database
 
-const POSTGRES = "postgres"
+const (
+	POSTGRES = "postgres"
+)
 
-// Connect with database
+// Connect establishes a new PostgreSQL connection using Goqu and returns the database instance.
 func Connect(cfg config.DBConfig) (*goqu.Database, error) {
-	return postgresDBConnection(cfg)
+	// Build PostgreSQL connection URL
+	dbURL := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?%s",
+		cfg.Username,
+		cfg.Password,
+		cfg.Host,
+		cfg.Port,
+		cfg.Db,
+		cfg.QueryString,
+	)
+
+	// Open SQL DB connection
+	sqlDB, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Verify connection
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	fmt.Println("✅ Connected to PostgreSQL at", dbURL)
+
+	// Register Goqu dialect and return instance
+	dbInstance = goqu.Dialect("postgres").DB(sqlDB)
+	return dbInstance, nil
 }
 
-func postgresDBConnection(cfg config.DBConfig) (*goqu.Database, error) {
-	dbURL = "postgres://" + cfg.Username + ":" + cfg.Password + "@" + cfg.Host + ":" + strconv.Itoa(cfg.Port) + "/" + cfg.Db + "?" + cfg.QueryString
-	if db == nil {
-		db, err = sql.Open(POSTGRES, dbURL)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("Connected to DB %s \n", dbURL)
-		return goqu.New(POSTGRES, db), err
-	}
-	return goqu.New(POSTGRES, db), err
+// GetDB returns the already connected Goqu database instance.
+func GetDB() *goqu.Database {
+	return dbInstance
 }

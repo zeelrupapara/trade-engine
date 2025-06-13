@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
-	"github.com/google/uuid"
 	"gitlab.com/zeelrupapara/trade-engine/models"
+	"gitlab.com/zeelrupapara/trade-engine/pkg/utils"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +29,7 @@ func (ec *EngineCore) LoadOrCreateAccountByName(name string) error {
 
 	// Create new account
 	newAcc := &models.Account{
-		ID:        uuid.New().String(),
+		ID:        utils.GenerateUUID(),
 		Name:      name,
 		Balance:   100000.0,
 		CreatedAt: now,

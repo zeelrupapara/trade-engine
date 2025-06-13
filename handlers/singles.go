@@ -71,7 +71,9 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 }
 
 func (ec *EngineCore) InsertOrderToDB(order models.Order) error {
-	record := map[string]interface{}{
+	now := time.Now()
+
+	_, err := ec.DB.Insert("orders").Rows(goqu.Record{
 		"order_id":    order.OrderID,
 		"exchange":    order.Exchange,
 		"account_id":  order.AccountID,
@@ -83,12 +85,11 @@ func (ec *EngineCore) InsertOrderToDB(order models.Order) error {
 		"qty":         order.Qty,
 		"reason":      order.Reason,
 		"status":      "new",
-		"timestamp":   time.Now(),
-		"created_at":  time.Now(),
-		"updated_at":  time.Now(),
-	}
+		"timestamp":   now,
+		"created_at":  now,
+		"updated_at":  now,
+	}).Executor().Exec()
 
-	_, err := ec.DB.Insert(goqu.T("orders")).Rows(record).Executor().Exec()
 	if err != nil {
 		ec.Logger.Error("❌ Failed to insert order", zap.Error(err))
 	}

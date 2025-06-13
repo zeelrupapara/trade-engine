@@ -1,6 +1,6 @@
 -- +migrate Up
 CREATE TABLE IF NOT EXISTS orders (
-	order_id TEXT PRIMARY KEY,
+	order_id TEXT PRIMARY KEY NOT NULL,
 	exchange TEXT,
 	account_id TEXT NOT NULL,
 	symbol TEXT,
