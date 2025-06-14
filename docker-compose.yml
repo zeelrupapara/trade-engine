@@ -1,8 +1,8 @@
 version: "3.8"
 services:
-  postgresdb:
+  db:
     image: postgres:15.2-alpine
-    container_name: postgresdb
+    container_name: db
     environment:
       POSTGRES_USER: engineuser
       POSTGRES_PASSWORD: enginepass
@@ -19,7 +19,20 @@ services:
     ports:
       - 4222:4222
 
+  # trade:
+  #   build: .
+  #   container_name: trade
+  #   environment:
+  #     DB_HOST: db
+  #     DB_PORT: 5432
+  #     DB_USERNAME: engineuser
+  #     DB_PASSWORD: enginepass
+  #     DB_NAME: enginecore
+  #     DB_QUERYSTRING: sslmode=disable
+  #     NATS_HOST: nats
+  #     NATS_PORT: 4222
 
-volumes:
-  pgdata:
+
+# volumes:
+#   pgdata:
   

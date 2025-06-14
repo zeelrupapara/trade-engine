@@ -21,6 +21,7 @@ type AppConfig struct {
 	DB            DBConfig
 	Nats          NatsConfig
 	Binance       cfg.BinanceCfg
+	Telegram      TeleConfig
 }
 
 // GetConfig Collects all configs

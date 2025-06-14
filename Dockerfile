@@ -14,4 +14,4 @@ COPY ./database /app/database
 COPY .env.docker /app/.env
 EXPOSE 9000
 ENTRYPOINT ["./trade-engine"]
-CMD ["grpc-server"]
+CMD ["engine"]

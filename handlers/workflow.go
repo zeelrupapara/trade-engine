@@ -11,7 +11,7 @@ import (
 func (ec *EngineCore) InitBotWorkflow(symbol, exchangeName string, interval int) {
 	ec.Logger.Info("Starting Workflow", zap.String("symbol", symbol), zap.String("exchange", exchangeName), zap.Int("interval", interval))
 	go func() {
-		ticker := time.NewTicker(time.Duration(interval) * time.Second)
+		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
 		defer ticker.Stop()
 
 		var closeCh <-chan int
