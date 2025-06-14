@@ -1,6 +1,6 @@
 -- +migrate Up
 CREATE TABLE IF NOT EXISTS positions (
-	id SERIAL PRIMARY KEY,
+	id TEXT PRIMARY KEY,
 	created_at TIMESTAMPTZ,
 	updated_at TIMESTAMPTZ,
 	closed_at TIMESTAMPTZ,

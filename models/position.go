@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Position struct {
-	ID         uint       `db:"id"`
+	ID         string     `db:"id"`
 	CreatedAt  time.Time  `db:"created_at"`
 	UpdatedAt  time.Time  `db:"updated_at"`
 	ClosedAt   *time.Time `db:"closed_at"`

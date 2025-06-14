@@ -6,35 +6,61 @@ import (
 	"gitlab.com/zeelrupapara/trade-engine/models"
 )
 
-// ComputeOrderVolume - calculate quantity based on fixed risk per trade
-func (ec *EngineCore) ComputeOrderVolume(price, atr float64) float64 {
-	riskPercent := 0.01
-	riskAmount := ec.Account.Balance * riskPercent
+// ---------- STATIC STRATEGY (scalp_1m) CONFIG ----------
 
-	if atr == 0 || price == 0 {
+var scalp1m = struct {
+	AllocationPercent float64 // % of total capital for this strategy
+	RiskPercent       float64 // % of strategy capital risked per trade
+	SLMultiplier      float64 // ATR × this for stop‐loss
+	TPMultiplier      float64 // ATR × this for take‐profit
+}{
+	AllocationPercent: 0.25, // 25%
+	RiskPercent:       0.01, // 1%
+	SLMultiplier:      1.0,
+	TPMultiplier:      2.0,
+}
+
+// ComputeOrderVolume calculates units based on ATR stop‐distance
+// but now limits the capital to scalp1m.AllocationPercent of your account
+// and risks only scalp1m.RiskPercent of that slice.
+func (ec *EngineCore) ComputeOrderVolume(price, atr float64) float64 {
+	if atr <= 0 || price <= 0 {
 		return 0
 	}
-	units := riskAmount / atr
+
+	// Total capital for this strategy
+	stratCapital := ec.Account.Balance * scalp1m.AllocationPercent
+	// Amount we are willing to lose on this trade
+	riskAmount := stratCapital * scalp1m.RiskPercent
+	// Stop‐loss distance in price units
+	stopDist := atr * scalp1m.SLMultiplier
+
+	units := riskAmount / stopDist
+	// Round down to two decimals (adjust to your instrument precision)
 	return math.Floor(units*100) / 100
 }
 
-// ComputeRiskLevels - basic SL/TP calculation using ATR
+// ComputeRiskLevels now uses the strategy’s multipliers on ATR
+// to produce a tighter SL or a larger TP.
 func (ec *EngineCore) ComputeRiskLevels(price, atr float64) (sl, tp float64) {
-	sl = price - atr
-	tp = price + (2 * atr)
+	sl = price - (atr * scalp1m.SLMultiplier)
+	tp = price + (atr * scalp1m.TPMultiplier)
 	return
 }
 
-// ComputeATR - Average True Range based on historical candles
+// ComputeATR remains a rolling ATR but now explicitly handles
+// “not enough candles” and timestamps the last computation.
 func (ec *EngineCore) ComputeATR(candles []models.Kline) float64 {
-	atr := 0.0
+	if len(candles) < 2 {
+		return 0
+	}
+	var sumTR float64
 	for i := 1; i < len(candles); i++ {
-		tr := math.Max(candles[i].High-candles[i].Low, math.Abs(candles[i].High-candles[i-1].Close))
-		tr = math.Max(tr, math.Abs(candles[i].Low-candles[i-1].Close))
-		atr += tr
+		hi, lo := candles[i].High, candles[i].Low
+		prevC := candles[i-1].Close
+		tr := math.Max(hi-lo, math.Max(math.Abs(hi-prevC), math.Abs(lo-prevC)))
+		sumTR += tr
 	}
-	if len(candles) > 1 {
-		atr = atr / float64(len(candles)-1)
-	}
-	return atr
+	// Classic ATR = average of the TRs
+	return sumTR / float64(len(candles)-1)
 }

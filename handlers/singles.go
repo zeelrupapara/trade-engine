@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
@@ -31,8 +30,15 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			atr := ec.ComputeATR(symbolData.KlinesBuf.GetAll())
 			quantity := ec.ComputeOrderVolume(symbolData.Ticker.BidPrice, atr)
 
+			sl := 0.0
+			tp := 0.0
+
 			// 3. Apply risk management (SL/TP based on ATR)
-			sl, tp := ec.ComputeRiskLevels(symbolData.Ticker.BidPrice, atr)
+			if signal.Action == "LONG" {
+				sl, tp = ec.ComputeRiskLevels(symbolData.Ticker.BidPrice, atr)
+			} else if signal.Action == "SHORT" {
+				sl, tp = ec.ComputeRiskLevels(symbolData.Ticker.AskPrice, atr)
+			}
 
 			// 4. Prepare order
 			reason := signal.Reason
@@ -51,22 +57,21 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			ec.Logger.Sugar().Infof("Order: %+v | SL: %.2f | TP: %.2f | Reason: %s", order, sl, tp, reason)
 
 			// 5. Insert order record into DB
-			if err := ec.InsertOrderToDB(order); err != nil {
-				ec.Logger.Error("Failed to insert order to DB", zap.Error(err))
-				return
-			}
+			if signal.Action != "NONE" {
+				if err := ec.InsertOrderToDB(order); err != nil {
+					ec.Logger.Error("Failed to insert order to DB", zap.Error(err))
+					return
+				}
 
-			// 6. Publish order to NATS
-			orderBytes, err := json.Marshal(order)
-			if err != nil {
-				ec.Logger.Error("Failed to marshal order", zap.Error(err))
-				return
+				// 6. Publish order to NATS
+				orderBytes, err := json.Marshal(order)
+				if err != nil {
+					ec.Logger.Error("Failed to marshal order", zap.Error(err))
+					return
+				}
+				ec.Nats.Publish("orders."+symbol, orderBytes)
 			}
-			ec.Nats.Publish("orders."+symbol, orderBytes)
 		}
-
-		// Publish signal to the nats
-		ec.Nats.Publish("signal."+symbol, []byte(fmt.Sprintf("%s", signal)))
 	}
 }
 

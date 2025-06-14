@@ -12,6 +12,7 @@ import (
 	"gitlab.com/zeelrupapara/trade-engine/constants"
 	"gitlab.com/zeelrupapara/trade-engine/models"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/exchange"
+	"gitlab.com/zeelrupapara/trade-engine/pkg/utils"
 	"go.uber.org/zap"
 )
 
@@ -24,10 +25,11 @@ func (ec *EngineCore) SubscribeToOrders() {
 			ec.Logger.Error("Invalid order format", zap.Error(err))
 			return
 		}
+		ec.Logger.Info("📥 New order received", zap.String("order_id", order.OrderID), zap.String("symbol", order.Symbol))
 		ec.ProcessNewOrder(order)
 	})
 	if err != nil {
-		ec.Logger.Fatal("❌ Failed to subscribe to orders.new", zap.Error(err))
+		ec.Logger.Fatal("❌ Failed to subscribe to orders.", zap.Error(err))
 	}
 }
 
@@ -35,6 +37,7 @@ func (ec *EngineCore) SubscribeToOrders() {
 
 func (ec *EngineCore) ProcessNewOrder(order models.Order) {
 	pos := &models.Position{
+		ID:         utils.GenerateUUID(),
 		OrderID:    order.OrderID,
 		AccountID:  order.AccountID,
 		Exchange:   order.Exchange,
@@ -56,7 +59,30 @@ func (ec *EngineCore) ProcessNewOrder(order models.Order) {
 }
 
 func (ec *EngineCore) InsertPositionToDB(pos *models.Position) error {
-	return ec.DB.Insert(pos).Error()
+	record := goqu.Record{
+		"id":          pos.ID,
+		"created_at":  pos.CreatedAt,
+		"updated_at":  pos.UpdatedAt,
+		"closed_at":   pos.ClosedAt,
+		"exchange":    pos.Exchange,
+		"order_id":    pos.OrderID,
+		"symbol":      pos.Symbol,
+		"side":        pos.Side,
+		"qty":         pos.Qty,
+		"entry_price": pos.EntryPrice,
+		"exit_price":  pos.ExitPrice,
+		"profit":      pos.Profit,
+		"commission":  pos.Commission,
+		"account_id":  pos.AccountID,
+		"status":      pos.Status,
+		"reason":      pos.Reason,
+	}
+
+	_, err := ec.DB.Insert("positions").Rows(record).Executor().Exec()
+	if err != nil {
+		ec.Logger.Error("❌ Failed to insert position", zap.Error(err))
+	}
+	return err
 }
 
 // ---------- SL/TP WATCHER ----------
