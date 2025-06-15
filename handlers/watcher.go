@@ -27,8 +27,8 @@ func (ec *EngineCore) InitWatcher() {
 func (ec *EngineCore) StartScheduling() {
 	ec.Cron = gocron.NewScheduler(time.Local)
 
-	// Daily report at 23:59
-	ec.Cron.Every(1).Day().At("23:59").Do(func() {
+	// Every 6 hours
+	ec.Cron.Every(6).Hours().Do(func() {
 		ec.sendDailyReport()
 	})
 
