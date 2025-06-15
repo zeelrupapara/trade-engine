@@ -1,4 +1,4 @@
-package handlers
+package indicators
 
 // EMA computes the Exponential Moving Average for the given data and period.
 // EMA = (price - prevEMA) * (2/(period+1)) + prevEMA:contentReference[oaicite:0]{index=0}.

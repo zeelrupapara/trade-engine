@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 	database "gitlab.com/zeelrupapara/trade-engine/database/migrations"
 	"gitlab.com/zeelrupapara/trade-engine/handlers"
 	"gitlab.com/zeelrupapara/trade-engine/pkg/nats"
+	"gitlab.com/zeelrupapara/trade-engine/pkg/telegram"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -69,8 +71,15 @@ func GetEngineCommandDef(cfg config.AppConfig, logger *zap.Logger) cobra.Command
 				return err
 			}
 
+			// go-corn
+			cron := gocron.NewScheduler(time.UTC)
+			cron.StartAsync()
+
+			// sending the report to telegram
+			teleClient := telegram.NewClient(&cfg)
+
 			// Init Engine Core
-			ec := handlers.NewEngineCore(cfg, logger, db, nats.Nc)
+			ec := handlers.NewEngineCore(cfg, logger, db, nats.Nc, cron, teleClient)
 			go ec.StartEngine()
 
 			// Started Helthcheck
