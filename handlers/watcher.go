@@ -20,6 +20,8 @@ func (ec *EngineCore) InitWatcher() {
 
 	// Subcribe to the papar trading engine simulator for fake order to test the bot
 	ec.SubscribeToOrders()
+	// Watch Closing Positions
+	ec.StartPriceWatcher()
 
 	ec.StartScheduling()
 }

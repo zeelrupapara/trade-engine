@@ -28,16 +28,24 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			signal = handlers.ComputeEMRDecision(prices)
 			ec.Logger.Sugar().Infof("Signal: %v", signal, zap.String("symbol", symbol), zap.String("exchange", exchangeName), zap.Int("interval", interval))
 			atr := ec.ComputeATR(symbolData.KlinesBuf.GetAll())
-			quantity := ec.ComputeOrderVolume(symbolData.Ticker.BidPrice, atr)
+			quantity := 0.0
+			switch signal.Action {
+			case "LONG":
+				quantity = ec.ComputeOrderVolume(symbolData.Ticker.BidPrice, atr)
+			case "SHORT":
+				quantity = ec.ComputeOrderVolume(symbolData.Ticker.AskPrice, atr)
+			}
 
 			sl := 0.0
 			tp := 0.0
 
+			ec.Logger.Info("ATR", zap.Float64("atr", atr), zap.Float64("quantity", quantity))
+
 			// 3. Apply risk management (SL/TP based on ATR)
 			if signal.Action == "LONG" {
-				sl, tp = ec.ComputeRiskLevels(symbolData.Ticker.BidPrice, atr)
+				sl, tp = ec.ComputeRiskLevels(symbolData.Ticker.BidPrice, atr, signal.Action)
 			} else if signal.Action == "SHORT" {
-				sl, tp = ec.ComputeRiskLevels(symbolData.Ticker.AskPrice, atr)
+				sl, tp = ec.ComputeRiskLevels(symbolData.Ticker.AskPrice, atr, signal.Action)
 			}
 
 			// 4. Prepare order

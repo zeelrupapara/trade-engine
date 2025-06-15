@@ -40,7 +40,7 @@ func (ec *EngineCore) OnlyAllowLimitedNumberOfPositions() bool {
 }
 
 func (ec *EngineCore) ProcessNewOrder(order models.Order) {
-	if ec.OnlyAllowLimitedNumberOfPositions() {
+	if ec.OnlyAllowLimitedNumberOfPositions() && order.Qty > 0 {
 		pos := &models.Position{
 			ID:         utils.GenerateUUID(),
 			OrderID:    order.OrderID,
@@ -61,6 +61,8 @@ func (ec *EngineCore) ProcessNewOrder(order models.Order) {
 
 		ec.Positions[order.OrderID] = pos
 		ec.Logger.Info("📥 Position opened", zap.String("order_id", order.OrderID), zap.String("symbol", order.Symbol))
+	} else {
+		ec.Logger.Info("📥 Position not opened", zap.String("order_id", order.OrderID), zap.String("symbol", order.Symbol), zap.Any("allow positions", ec.OnlyAllowLimitedNumberOfPositions()), zap.Any("order qty", order.Qty))
 	}
 }
 
@@ -91,6 +93,7 @@ func (ec *EngineCore) InsertPositionToDB(pos *models.Position) error {
 		"reason":      pos.Reason,
 	}
 	if _, err := tx.Insert("positions").Rows(positionRecord).Executor().Exec(); err != nil {
+		ec.Logger.Error("❌ Failed to save open position", zap.Error(err))
 		return err
 	}
 
@@ -109,25 +112,29 @@ func (ec *EngineCore) InsertPositionToDB(pos *models.Position) error {
 		"timestamp":   now,
 	}
 	if _, err := tx.Insert("deals").Rows(entryDeal).Executor().Exec(); err != nil {
+		ec.Logger.Error("❌ Failed to save entry deal", zap.Error(err))
 		return err
 	}
 
 	// Deduct cost
 	cost := pos.EntryPrice * pos.Qty
 	newBalance := ec.Account.Balance - cost
+	ec.Logger.Info("💰 Cost deducted", zap.Float64("cost", cost), zap.Float64("balance", newBalance))
 	if _, err := tx.Update("accounts").
 		Set(goqu.Record{
 			"balance":    newBalance,
 			"updated_at": now,
 		}).
-		Where(goqu.C("id").Eq(pos.AccountID)).
+		Where(goqu.C("name").Eq(ec.Account.Name)).
 		Executor().
 		Exec(); err != nil {
+		ec.Logger.Error("❌ Failed to update account balance", zap.Error(err))
 		return err
 	}
 
 	// Commit transaction and update memory
 	if err := tx.Commit(); err != nil {
+		ec.Logger.Error("❌ Failed to commit transaction", zap.Error(err))
 		return err
 	}
 	ec.Account.Balance = newBalance
@@ -157,14 +164,14 @@ func (ec *EngineCore) StartPriceWatcher() {
 
 func (ec *EngineCore) CheckAllPositions() {
 	for id, pos := range ec.Positions {
-		price := 0.0
+		var price float64
 		switch pos.Exchange {
 		case constants.BINANCE:
 			switch pos.Side {
-			case "buy":
-				price = ec.Exchange[constants.BINANCE].(exchange.Binance).Symbols[pos.Symbol].Ticker.BidPrice
-			case "sell":
-				price = ec.Exchange[constants.BINANCE].(exchange.Binance).Symbols[pos.Symbol].Ticker.AskPrice
+			case "LONG":
+				price = ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[pos.Symbol].Ticker.BidPrice
+			case "SHORT":
+				price = ec.Exchange[constants.BINANCE].(*exchange.Binance).Symbols[pos.Symbol].Ticker.AskPrice
 			}
 		}
 		if ShouldClose(pos, price) {
@@ -175,9 +182,9 @@ func (ec *EngineCore) CheckAllPositions() {
 
 func ShouldClose(pos *models.Position, price float64) bool {
 	switch pos.Side {
-	case "buy":
+	case "LONG":
 		return (pos.EntryPrice > 0 && price <= pos.EntryPrice-0.01) || (price >= pos.EntryPrice+0.01)
-	case "sell":
+	case "SHORT":
 		return (pos.EntryPrice > 0 && price >= pos.EntryPrice+0.01) || (price <= pos.EntryPrice-0.01)
 	default:
 		return false
@@ -196,7 +203,7 @@ func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, ex
 
 	now := time.Now()
 	var profit float64
-	if pos.Side == "buy" {
+	if pos.Side == "LONG" {
 		profit = (exitPrice - pos.EntryPrice) * pos.Qty
 	} else {
 		profit = (pos.EntryPrice - exitPrice) * pos.Qty
@@ -253,7 +260,7 @@ func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, ex
 			"balance":    newBalance,
 			"updated_at": now,
 		}).
-		Where(goqu.C("id").Eq(pos.AccountID)).
+		Where(goqu.C("name").Eq(ec.Account.Name)).
 		Executor().
 		Exec(); err != nil {
 		ec.Logger.Error("❌ Failed to update account", zap.Error(err))
@@ -306,7 +313,7 @@ func (ec *EngineCore) ApplyProfitToAccount(accountID string, profit float64) err
 			"balance":    ec.Account.Balance,
 			"updated_at": ec.Account.UpdatedAt,
 		}).
-		Where(goqu.C("id").Eq(accountID)).
+		Where(goqu.C("name").Eq(ec.Account.Name)).
 		Executor().
 		Exec()
 	return err

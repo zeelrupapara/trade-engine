@@ -1,5 +1,5 @@
 package constants
 
 const (
-	MaxNumberOfPositions = 20
+	MaxNumberOfPositions = 10
 )
