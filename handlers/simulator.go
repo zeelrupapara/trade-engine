@@ -35,27 +35,33 @@ func (ec *EngineCore) SubscribeToOrders() {
 
 // ---------- PROCESS NEW ORDER ----------
 
+func (ec *EngineCore) OnlyAllowLimitedNumberOfPositions() bool {
+	return !(len(ec.Positions) >= constants.MaxNumberOfPositions)
+}
+
 func (ec *EngineCore) ProcessNewOrder(order models.Order) {
-	pos := &models.Position{
-		ID:         utils.GenerateUUID(),
-		OrderID:    order.OrderID,
-		AccountID:  order.AccountID,
-		Exchange:   order.Exchange,
-		Symbol:     order.Symbol,
-		Side:       order.Side,
-		EntryPrice: order.EntryPrice,
-		Qty:        order.Qty,
-		Status:     "open",
-		Reason:     order.Reason,
-	}
+	if ec.OnlyAllowLimitedNumberOfPositions() {
+		pos := &models.Position{
+			ID:         utils.GenerateUUID(),
+			OrderID:    order.OrderID,
+			AccountID:  order.AccountID,
+			Exchange:   order.Exchange,
+			Symbol:     order.Symbol,
+			Side:       order.Side,
+			EntryPrice: order.EntryPrice,
+			Qty:        order.Qty,
+			Status:     "open",
+			Reason:     order.Reason,
+		}
 
-	if err := ec.InsertPositionToDB(pos); err != nil {
-		ec.Logger.Error("❌ Failed to save open position", zap.Error(err))
-		return
-	}
+		if err := ec.InsertPositionToDB(pos); err != nil {
+			ec.Logger.Error("❌ Failed to save open position", zap.Error(err))
+			return
+		}
 
-	ec.Positions[order.OrderID] = pos
-	ec.Logger.Info("📥 Position opened", zap.String("order_id", order.OrderID), zap.String("symbol", order.Symbol))
+		ec.Positions[order.OrderID] = pos
+		ec.Logger.Info("📥 Position opened", zap.String("order_id", order.OrderID), zap.String("symbol", order.Symbol))
+	}
 }
 
 func (ec *EngineCore) InsertPositionToDB(pos *models.Position) error {

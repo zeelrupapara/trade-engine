@@ -57,7 +57,7 @@ func (ec *EngineCore) ComputeSignal(exchangeName, symbol string, interval int) {
 			ec.Logger.Sugar().Infof("Order: %+v | SL: %.2f | TP: %.2f | Reason: %s", order, sl, tp, reason)
 
 			// 5. Insert order record into DB
-			if signal.Action != "NONE" {
+			if signal.Action != "NONE" && ec.OnlyAllowLimitedNumberOfPositions() {
 				if err := ec.InsertOrderToDB(order); err != nil {
 					ec.Logger.Error("Failed to insert order to DB", zap.Error(err))
 					return
