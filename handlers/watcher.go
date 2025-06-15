@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
@@ -56,7 +55,7 @@ func (ec *EngineCore) sendDailyReport() {
 	var todayResults []PnLEntry
 	var allResults []PnLEntry
 
-	// Today's symbol-wise closed positions
+	// Fetch today's closed positions with symbol
 	err := ec.DB.From("positions").
 		Select("symbol", "profit").
 		Where(goqu.And(
@@ -66,63 +65,69 @@ func (ec *EngineCore) sendDailyReport() {
 		)).
 		ScanStructs(&todayResults)
 	if err != nil {
-		ec.Logger.Error("❌ Failed to fetch today's report data", zap.Error(err))
+		ec.Logger.Error("❌ Failed to fetch today's data", zap.Error(err))
 		return
 	}
 
-	// All-time symbol-wise closed positions
+	// Fetch all closed positions
 	err = ec.DB.From("positions").
 		Select("symbol", "profit").
 		Where(goqu.C("profit").IsNotNull()).
 		ScanStructs(&allResults)
 	if err != nil {
-		ec.Logger.Error("❌ Failed to fetch overall report data", zap.Error(err))
+		ec.Logger.Error("❌ Failed to fetch overall data", zap.Error(err))
 		return
 	}
 
-	// Aggregate today's symbol PnL
+	// Symbol-wise today stats
 	todaySymbolStats := make(map[string]struct {
 		Count  int
 		Wins   int
 		Profit float64
 	})
-	var todayPnL float64
+	todayPnL := 0.0
+
 	for _, r := range todayResults {
-		s := todaySymbolStats[r.Symbol]
-		s.Count++
+		stat := todaySymbolStats[r.Symbol]
+		stat.Count++
 		if r.Profit > 0 {
-			s.Wins++
+			stat.Wins++
 		}
-		s.Profit += r.Profit
-		todaySymbolStats[r.Symbol] = s
+		stat.Profit += r.Profit
+		todaySymbolStats[r.Symbol] = stat
 		todayPnL += r.Profit
 	}
 
-	// Aggregate all-time symbol PnL
+	// Symbol-wise all-time stats
 	overallSymbolPnL := make(map[string]float64)
-	var overallPnL float64
+	overallPnL := 0.0
 	for _, r := range allResults {
 		overallSymbolPnL[r.Symbol] += r.Profit
 		overallPnL += r.Profit
 	}
 
-	// Compute equity
+	// Compute current equity
 	equity := ec.Account.Balance + overallPnL
 
-	// Format symbol-wise stats
-	var symbolReport strings.Builder
-	for symbol, stats := range todaySymbolStats {
-		winRate := 0.0
-		if stats.Count > 0 {
-			winRate = (float64(stats.Wins) / float64(stats.Count)) * 100
+	// Build per-symbol report
+	var symbolReport string
+	if len(todaySymbolStats) == 0 {
+		symbolReport = "No trades today."
+	} else {
+		for symbol, stats := range todaySymbolStats {
+			winRate := 0.0
+			if stats.Count > 0 {
+				winRate = (float64(stats.Wins) / float64(stats.Count)) * 100
+			}
+			totalPnL := overallSymbolPnL[symbol]
+			symbolReport += fmt.Sprintf(
+				"📌 %s: Trades: %d | Wins: %d | WinRate: %.2f%% | TodayPnL: %.2f | TotalPnL: %.2f\n",
+				symbol, stats.Count, stats.Wins, winRate, stats.Profit, totalPnL,
+			)
 		}
-		symbolReport.WriteString(fmt.Sprintf(
-			"📌 *%s*: Trades: %d | Wins: %d | WinRate: %.2f%% | PnL: %.2f | TotalPnL: %.2f\n",
-			symbol, stats.Count, stats.Wins, winRate, stats.Profit, overallSymbolPnL[symbol],
-		))
 	}
 
-	// Final message
+	// Final report
 	msg := fmt.Sprintf(
 		"📊 *Daily Trading Report*\n\n"+
 			"🗓️ *Date:* %s\n"+
@@ -138,7 +143,7 @@ func (ec *EngineCore) sendDailyReport() {
 		equity,
 		todayPnL,
 		overallPnL,
-		symbolReport.String(),
+		symbolReport,
 	)
 
 	// Send via Telegram
