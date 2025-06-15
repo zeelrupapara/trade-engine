@@ -65,30 +65,75 @@ func (ec *EngineCore) ProcessNewOrder(order models.Order) {
 }
 
 func (ec *EngineCore) InsertPositionToDB(pos *models.Position) error {
-	record := goqu.Record{
+	tx, err := ec.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	now := time.Now()
+	pos.CreatedAt = now
+	pos.UpdatedAt = now
+
+	// Insert position
+	positionRecord := goqu.Record{
 		"id":          pos.ID,
 		"created_at":  pos.CreatedAt,
 		"updated_at":  pos.UpdatedAt,
-		"closed_at":   pos.ClosedAt,
 		"exchange":    pos.Exchange,
 		"order_id":    pos.OrderID,
 		"symbol":      pos.Symbol,
 		"side":        pos.Side,
 		"qty":         pos.Qty,
 		"entry_price": pos.EntryPrice,
-		"exit_price":  pos.ExitPrice,
-		"profit":      pos.Profit,
-		"commission":  pos.Commission,
 		"account_id":  pos.AccountID,
 		"status":      pos.Status,
 		"reason":      pos.Reason,
 	}
-
-	_, err := ec.DB.Insert("positions").Rows(record).Executor().Exec()
-	if err != nil {
-		ec.Logger.Error("❌ Failed to insert position", zap.Error(err))
+	if _, err := tx.Insert("positions").Rows(positionRecord).Executor().Exec(); err != nil {
+		return err
 	}
-	return err
+
+	// Entry deal
+	entryDeal := goqu.Record{
+		"id":          uuid.New().String(),
+		"order_id":    pos.OrderID,
+		"account_id":  pos.AccountID,
+		"symbol":      pos.Symbol,
+		"side":        pos.Side,
+		"entry_price": pos.EntryPrice,
+		"exit_price":  0, // Not applicable yet
+		"qty":         pos.Qty,
+		"profit":      0, // Not applicable yet
+		"commission":  0, // Not applicable yet
+		"timestamp":   now,
+	}
+	if _, err := tx.Insert("deals").Rows(entryDeal).Executor().Exec(); err != nil {
+		return err
+	}
+
+	// Deduct cost
+	cost := pos.EntryPrice * pos.Qty
+	newBalance := ec.Account.Balance - cost
+	if _, err := tx.Update("accounts").
+		Set(goqu.Record{
+			"balance":    newBalance,
+			"updated_at": now,
+		}).
+		Where(goqu.C("id").Eq(pos.AccountID)).
+		Executor().
+		Exec(); err != nil {
+		return err
+	}
+
+	// Commit transaction and update memory
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	ec.Account.Balance = newBalance
+	ec.Account.UpdatedAt = now
+
+	return nil
 }
 
 // ---------- SL/TP WATCHER ----------
@@ -141,57 +186,93 @@ func ShouldClose(pos *models.Position, price float64) bool {
 
 // ---------- POSITION CLOSURE + DEAL + ACCOUNT UPDATE ----------
 
-func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, price float64) {
+func (ec *EngineCore) CloseAndRecordPosition(id string, pos *models.Position, exitPrice float64) {
+	tx, err := ec.DB.Begin()
+	if err != nil {
+		ec.Logger.Error("❌ Begin TX failed", zap.Error(err))
+		return
+	}
+	defer tx.Rollback()
+
 	now := time.Now()
 	var profit float64
-
 	if pos.Side == "buy" {
-		profit = (price - pos.EntryPrice) * pos.Qty
+		profit = (exitPrice - pos.EntryPrice) * pos.Qty
 	} else {
-		profit = (pos.EntryPrice - price) * pos.Qty
+		profit = (pos.EntryPrice - exitPrice) * pos.Qty
 	}
-
-	commission := math.Abs(price * pos.Qty * 0.01)
+	commission := math.Abs(exitPrice * pos.Qty * 0.01)
 	netProfit := profit - commission
 
-	pos.ExitPrice = &price
+	// Update position
+	pos.ExitPrice = &exitPrice
 	pos.Profit = &netProfit
 	pos.Commission = &commission
 	pos.Status = "closed"
 	pos.ClosedAt = &now
 
-	if err := ec.ApplyProfitToAccount(pos.AccountID, netProfit); err != nil {
-		ec.Logger.Error("❌ Failed to update account", zap.Error(err))
+	if _, err := tx.Update("positions").
+		Set(goqu.Record{
+			"exit_price": pos.ExitPrice,
+			"profit":     pos.Profit,
+			"commission": pos.Commission,
+			"status":     pos.Status,
+			"closed_at":  pos.ClosedAt,
+			"updated_at": now,
+		}).
+		Where(goqu.C("order_id").Eq(pos.OrderID)).
+		Executor().
+		Exec(); err != nil {
+		ec.Logger.Error("❌ Failed to update position", zap.Error(err))
 		return
 	}
 
-	deal := &models.Deal{
-		ID:         uuid.New().String(),
-		OrderID:    pos.OrderID,
-		AccountID:  pos.AccountID,
-		Symbol:     pos.Symbol,
-		Side:       pos.Side,
-		EntryPrice: pos.EntryPrice,
-		ExitPrice:  price,
-		Qty:        pos.Qty,
-		Profit:     netProfit,
-		Commission: commission,
-		Timestamp:  now,
+	// Insert exit deal
+	exitDeal := goqu.Record{
+		"id":          uuid.New().String(),
+		"order_id":    pos.OrderID,
+		"account_id":  pos.AccountID,
+		"symbol":      pos.Symbol,
+		"side":        pos.Side,
+		"entry_price": pos.EntryPrice,
+		"exit_price":  exitPrice,
+		"qty":         pos.Qty,
+		"profit":      netProfit,
+		"commission":  commission,
+		"timestamp":   now,
 	}
-	if err := ec.DB.Insert(deal).Error(); err != nil {
+	if _, err := tx.Insert("deals").Rows(exitDeal).Executor().Exec(); err != nil {
 		ec.Logger.Error("❌ Failed to insert deal", zap.Error(err))
 		return
 	}
 
-	if err := ec.UpdateClosedPositionInDB(pos); err != nil {
-		ec.Logger.Error("❌ Failed to update closed position", zap.Error(err))
+	// Update account
+	newBalance := ec.Account.Balance + netProfit
+	if _, err := tx.Update("accounts").
+		Set(goqu.Record{
+			"balance":    newBalance,
+			"updated_at": now,
+		}).
+		Where(goqu.C("id").Eq(pos.AccountID)).
+		Executor().
+		Exec(); err != nil {
+		ec.Logger.Error("❌ Failed to update account", zap.Error(err))
 		return
 	}
 
+	if err := tx.Commit(); err != nil {
+		ec.Logger.Error("❌ TX Commit Failed", zap.Error(err))
+		return
+	}
+
+	// Update memory and cleanup
+	ec.Account.Balance = newBalance
+	ec.Account.UpdatedAt = now
 	delete(ec.Positions, id)
+
 	ec.Logger.Info("✅ Position closed",
 		zap.String("order_id", pos.OrderID),
-		zap.Float64("exit", price),
+		zap.Float64("exit", exitPrice),
 		zap.Float64("profit", netProfit),
 		zap.Float64("commission", commission),
 	)

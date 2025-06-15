@@ -21,6 +21,7 @@ WORKDIR /app
 
 COPY --from=builder /app/trade-engine .
 COPY ./database /app/database
+COPY ./exchange.yaml /app/exchange.yaml
 COPY .env.docker /app/.env
 
 EXPOSE 9000
